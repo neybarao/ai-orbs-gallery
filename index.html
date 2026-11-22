@@ -1,0 +1,121 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>AI Orbs Gallery</title>
+  <meta name="description" content="Audio-reactive WebGL2 orbs for voice and AI interfaces. Configure and export as code or video." />
+  <meta name="theme-color" content="#060607" />
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='11' fill='none' stroke='%233cc8ff' stroke-width='3'/%3E%3C/svg%3E" />
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <header class="top">
+    <div class="brand">
+      <span class="brand-mark"></span>
+      <span>AI Orbs</span>
+      <span class="muted" id="count"></span>
+    </div>
+    <div class="audio-bar">
+      <div class="seg" id="sourceSeg" role="radiogroup" aria-label="Audio source">
+        <button data-src="sim" class="on" role="radio" aria-checked="true">Simulated</button>
+        <button data-src="mic" role="radio" aria-checked="false">Mic</button>
+        <button data-src="system" role="radio" aria-checked="false">System</button>
+        <button data-src="file" role="radio" aria-checked="false">File</button>
+      </div>
+      <div class="meter" title="Input level"><i id="meterFill"></i></div>
+      <input type="file" id="fileInput" accept="audio/*" hidden />
+    </div>
+  </header>
+
+  <main>
+    <p class="lede">Audio-reactive orbs for voice &amp; AI interfaces. One WebGL2 draw call each. Hover to preview <em>speaking</em>, click to configure and export.</p>
+    <div class="grid" id="grid"></div>
+  </main>
+
+  <section class="detail" id="detail" hidden aria-modal="true" role="dialog" aria-labelledby="dTitle">
+    <div class="stage" id="stage">
+      <button class="icon-btn close" id="closeBtn" aria-label="Close">&#x2715;</button>
+      <div class="stage-bg">
+        <button data-bg="dark" class="on" title="Dark background"></button>
+        <button data-bg="light" title="Light background"></button>
+        <button data-bg="checker" title="Transparency checker"></button>
+      </div>
+      <canvas id="stageCanvas"></canvas>
+      <div class="states" id="states" role="tablist"></div>
+    </div>
+
+    <aside class="panel">
+      <div class="panel-head">
+        <h2 id="dTitle"></h2>
+        <p id="dDesc" class="muted"></p>
+      </div>
+
+      <div class="block">
+        <div class="block-title">Look <button class="link" id="resetBtn">Reset</button></div>
+        <div class="palettes" id="palettes"></div>
+        <div class="colors" id="colors"></div>
+        <div id="sliders"></div>
+      </div>
+
+      <div class="block">
+        <div class="block-title">Export</div>
+        <div class="tabs" role="tablist">
+          <button class="on" data-tab="code">Code</button>
+          <button data-tab="video">Video</button>
+        </div>
+
+        <div class="tab-body" data-body="code">
+          <div class="seg small" id="codeSeg">
+            <button data-code="html" class="on">HTML</button>
+            <button data-code="react">React</button>
+            <button data-code="api">API</button>
+          </div>
+          <pre class="code" id="codeOut"></pre>
+          <div class="row">
+            <button class="btn" id="copyCode">Copy snippet</button>
+            <button class="btn primary" id="dlComponent">Download .js</button>
+          </div>
+          <div class="row">
+            <button class="btn ghost" id="dlDemo">Demo .html</button>
+            <button class="btn ghost" id="copyConfig">Copy config JSON</button>
+          </div>
+        </div>
+
+        <div class="tab-body" data-body="video" hidden>
+          <label class="field">State
+            <select id="vState"></select>
+          </label>
+          <div class="field-row">
+            <label class="field">Duration
+              <select id="vDur"><option>3</option><option selected>5</option><option>8</option><option>10</option><option>15</option></select>
+            </label>
+            <label class="field">Size
+              <select id="vSize"><option value="512">512</option><option value="720">720</option><option value="1080" selected>1080</option></select>
+            </label>
+            <label class="field">FPS
+              <select id="vFps"><option>30</option><option selected>60</option></select>
+            </label>
+          </div>
+          <div class="field-row">
+            <label class="field">Format
+              <select id="vFormat"></select>
+            </label>
+            <label class="field">Background
+              <input type="color" id="vBg" value="#000000" />
+            </label>
+          </div>
+          <label class="check"><input type="checkbox" id="vAlpha" /> Transparent background <span class="muted">(WebM, experimental)</span></label>
+          <label class="check"><input type="checkbox" id="vLive" /> Drive with the live audio source</label>
+          <button class="btn primary wide" id="recordBtn">Record video</button>
+          <div class="progress" id="vProgress" hidden><i></i></div>
+          <p class="muted tiny">Recorded in real time in your browser. Keep this tab visible while recording.</p>
+        </div>
+      </div>
+    </aside>
+  </section>
+
+  <div class="toast" id="toast" role="status"></div>
+  <script type="module" src="src/app.js"></script>
+</body>
+</html>
