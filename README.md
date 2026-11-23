@@ -47,6 +47,11 @@ Em **Settings → Pages**, selecione **Source: GitHub Actions**.
 2. `frag` define `vec4 orb(vec2 p)`, que retorna cor **pré-multiplicada** (rgb, alpha). `p` vai de -1 a 1 no menor eixo; o raio base é ~0.6.
 3. Adicione o import em `src/orbs/index.js`.
 
+Partículas (opcional): adicione `points: { count, vert }`. O `vert` define
+`void particle(int id, out vec3 pos, out float size, out vec4 color)`, calculado na GPU para cada ponto
+(`pos` em unidades do orb, +z para o observador; `size` = diâmetro; cor pré-multiplicada).
+Os pontos são desenhados com blend aditivo por cima do `frag`. Veja `src/orbs/particles.js`.
+
 Uniforms e helpers disponíveis (veja `FRAG_HEAD` em `src/runtime.js`):
 
 | Uniform | Significado |

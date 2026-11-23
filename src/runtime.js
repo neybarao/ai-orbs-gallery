@@ -88,6 +88,44 @@ void main(){
   fragColor = c + uBg * (1.0 - c.a);
 }`;
 
+  // Optional particle pass: def.points = { count, vert } where vert defines
+  //   void particle(int id, out vec3 pos, out float size, out vec4 color)
+  // pos in orb units (sphere radius ~0.5, +z towards the viewer), size = diameter in orb units,
+  // color premultiplied. Points are drawn additively on top of the fragment pass.
+  const UNI_DECL = FRAG_HEAD.split('out vec4 fragColor;')[0].replace('#version 300 es', '');
+  const POINTS_VERT_HEAD = `#version 300 es
+${UNI_DECL}
+out vec4 vColor;
+#define PI 3.14159265359
+float hash11(float n){ return fract(sin(n) * 43758.5453123); }
+mat2 rot(float a){ float c = cos(a), s = sin(a); return mat2(c, -s, s, c); }
+float easeOutBack(float x){ float c1 = 1.70158; float c3 = c1 + 1.0; return 1.0 + c3 * pow(x - 1.0, 3.0) + c1 * pow(x - 1.0, 2.0); }
+`;
+  const POINTS_VERT_TAIL = `
+void main(){
+  vec3 pos; float size; vec4 col;
+  particle(gl_VertexID, pos, size, col);
+  float ip = clamp(uIntro, 0.0, 1.0);
+  float s = max(mix(0.02, 1.0, easeOutBack(ip)) * uScale, 1e-3);
+  float persp = 2.4 / max(2.4 - pos.z, 0.3);
+  float m = min(uRes.x, uRes.y);
+  vec2 sp = pos.xy * persp * s;
+  gl_Position = vec4(sp * m / uRes, 0.0, 1.0);
+  float px = size * persp * s * m * 0.5;
+  gl_PointSize = clamp(px, 1.0, 64.0);
+  vColor = col * smoothstep(0.0, 0.55, ip) * clamp(px / 1.5, 0.12, 1.0) * (1.0 - smoothstep(0.8, 1.0, length(sp)));
+}`;
+  const POINTS_FRAG = `#version 300 es
+precision highp float;
+in vec4 vColor;
+out vec4 fragColor;
+void main(){
+  vec2 d = gl_PointCoord * 2.0 - 1.0;
+  float r2 = dot(d, d);
+  if (r2 > 1.0) discard;
+  fragColor = vColor * (1.0 - r2) * (1.0 - r2);
+}`;
+
   const UNIFORMS = ['uRes', 'uTime', 'uLevel', 'uBass', 'uMid', 'uHigh', 'uIntro', 'uIdle', 'uSpeak',
     'uThink', 'uTrans', 'uColorA', 'uColorB', 'uColorC', 'uGlow', 'uDetail', 'uScale', 'uBg'];
 
@@ -165,36 +203,32 @@ void main(){
       return sh;
     }
 
-    program(def) {
-      const key = def.id + ':' + def.frag.length;
-      let p = this.programs.get(key);
-      if (p) return p;
+    _link(vs, fs) {
       const gl = this.gl;
       const prog = gl.createProgram();
-      gl.attachShader(prog, this._compile(gl.VERTEX_SHADER, VERT));
-      gl.attachShader(prog, this._compile(gl.FRAGMENT_SHADER, FRAG_HEAD + def.frag + FRAG_TAIL));
+      gl.attachShader(prog, this._compile(gl.VERTEX_SHADER, vs));
+      gl.attachShader(prog, this._compile(gl.FRAGMENT_SHADER, fs));
       gl.linkProgram(prog);
       if (!gl.getProgramParameter(prog, gl.LINK_STATUS) && !gl.isContextLost()) {
         throw new Error('Program link error: ' + gl.getProgramInfoLog(prog));
       }
       const loc = {};
       for (const u of UNIFORMS) loc[u] = gl.getUniformLocation(prog, u);
-      p = { prog, loc };
+      return { prog, loc };
+    }
+
+    program(def) {
+      const key = def.id + ':' + def.frag.length + ':' + (def.points ? def.points.vert.length : 0);
+      let p = this.programs.get(key);
+      if (p) return p;
+      p = this._link(VERT, FRAG_HEAD + def.frag + FRAG_TAIL);
+      if (def.points) p.points = this._link(POINTS_VERT_HEAD + def.points.vert + POINTS_VERT_TAIL, POINTS_FRAG);
       this.programs.set(key, p);
       return p;
     }
 
-    draw(def, u, w, h) {
-      if (this.lost) return false;
+    _uniforms(loc, u, w, h) {
       const gl = this.gl;
-      const c = this.canvas;
-      if (c.width !== w) c.width = w;
-      if (c.height !== h) c.height = h;
-      const { prog, loc } = this.program(def);
-      gl.viewport(0, 0, w, h);
-      gl.clearColor(0, 0, 0, 0);
-      gl.clear(gl.COLOR_BUFFER_BIT);
-      gl.useProgram(prog);
       gl.uniform2f(loc.uRes, w, h);
       gl.uniform1f(loc.uTime, u.uTime);
       gl.uniform1f(loc.uLevel, u.uLevel);
@@ -213,11 +247,32 @@ void main(){
       gl.uniform1f(loc.uDetail, u.uDetail);
       gl.uniform1f(loc.uScale, u.uScale);
       gl.uniform4fv(loc.uBg, u.uBg || [0, 0, 0, 0]);
-      gl.bindVertexArray(this.vao);
-      gl.drawArrays(gl.TRIANGLES, 0, 3);
-      return true;
     }
 
+    draw(def, u, w, h) {
+      if (this.lost) return false;
+      const gl = this.gl;
+      const c = this.canvas;
+      if (c.width !== w) c.width = w;
+      if (c.height !== h) c.height = h;
+      const P = this.program(def);
+      gl.viewport(0, 0, w, h);
+      gl.clearColor(0, 0, 0, 0);
+      gl.clear(gl.COLOR_BUFFER_BIT);
+      gl.useProgram(P.prog);
+      this._uniforms(P.loc, u, w, h);
+      gl.bindVertexArray(this.vao);
+      gl.drawArrays(gl.TRIANGLES, 0, 3);
+      if (P.points) {
+        gl.enable(gl.BLEND);
+        gl.blendFunc(gl.ONE, gl.ONE);
+        gl.useProgram(P.points.prog);
+        this._uniforms(P.points.loc, u, w, h);
+        gl.drawArrays(gl.POINTS, 0, def.points.count);
+        gl.disable(gl.BLEND);
+      }
+      return true;
+    }
     dispose() {
       const ext = this.gl.getExtension('WEBGL_lose_context');
       if (ext) ext.loseContext();
