@@ -1,35 +1,43 @@
-// Ref: luminous ring with swirling offset rings and a deep rippled aura.
+// Ref: fixed ring with a crisp white inner edge; wide translucent ribbons tilted in 3D
+// precess around it like a spinning coin; huge faint aura.
 export default {
   id: 'violet',
   name: 'Violet Ring',
-  description: 'Luminous ring with swirling echoes and a deep rippled aura.',
+  description: 'Crisp ring orbited by translucent ribbons precessing in 3D.',
   tags: ['ring', 'glow'],
-  defaults: { colorA: '#9b5cff', colorB: '#5a1fd1', colorC: '#f1e6ff', glow: 0.7, detail: 0.5 },
-  labels: { detail: 'Swirl' },
+  defaults: { colorA: '#9b5cff', colorB: '#5a1fd1', colorC: '#f4ecff', glow: 0.7, detail: 0.5 },
+  labels: { detail: 'Ribbon tilt' },
   frag: /* glsl */ `
 vec4 orb(vec2 p){
   float t = uTime;
   float r = length(p);
-  float R = 0.42 + 0.03 * uBass + 0.008 * sin(t * 1.2) * uIdle;
+  float R = 0.42 + 0.025 * uBass;
   vec3 acc = vec3(0.0);
-  float d = abs(r - R);
-  float w = 0.014 + 0.02 * uLevel;
-  acc += uColorC * pow(w / (d + w), 2.0) * 1.2;
-  acc += uColorA * exp(-d * 18.0) * 0.55;
-  for (int i = 0; i < 3; i++) {
+  // main ring: white inner edge fading to violet outwards
+  float din = r - R;
+  acc += uColorC * exp(-abs(din) * 160.0) * 1.3;
+  acc += uColorA * smoothstep(-0.01, 0.0, din) * exp(-max(din, 0.0) * 22.0) * 0.75;
+  acc += uColorA * exp(-abs(din) * 12.0) * 0.18;
+  // precessing ribbons (tilted ellipses)
+  for (int i = 0; i < 2; i++) {
     float fi = float(i);
-    float a0 = t * (0.5 + 0.25 * fi) + fi * 2.1;
-    vec2 off = vec2(cos(a0), sin(a0)) * ((0.03 + 0.03 * fi) * (0.5 + uDetail) + 0.08 * uLevel + 0.04 * uThink);
-    float Ri = R + 0.02 + 0.025 * fi + 0.04 * uLevel * hash11(fi + 3.0);
-    vec2 q = p - off;
-    float di = abs(length(q) - Ri);
-    float vis = 0.5 + 0.5 * cos(atan(q.y, q.x) - a0 - 0.6);
-    acc += mix(uColorA, uColorB, 0.4 + 0.2 * fi) * exp(-di * (40.0 - fi * 8.0)) * vis * (0.55 - 0.12 * fi) * (1.0 + uLevel);
+    float phi = t * (1.6 + 0.5 * fi) + fi * 2.4;
+    float tilt = (0.5 + 0.4 * uDetail) + 0.12 * sin(t * 0.9 + fi) + 0.25 * uLevel + 0.15 * uThink;
+    vec2 q = rot(phi) * p;
+    vec2 c = vec2(0.0, 0.06 + 0.035 * fi + 0.04 * uLevel);
+    q -= c;
+    q.y /= max(cos(tilt), 0.25);
+    float Ri = R + 0.04 + 0.02 * fi + 0.05 * uLevel;
+    float d = length(q) - Ri;
+    float w = 0.05 + 0.03 * uLevel;
+    float band = smoothstep(w, 0.0, abs(d)) ;
+    float edge = exp(-abs(abs(d) - w * 0.8) * 90.0);
+    float front = 0.45 + 0.55 * smoothstep(-0.3, 0.6, q.y / Ri);
+    acc += mix(uColorA, uColorC, 0.25) * (band * 0.5 + edge * 0.55) * front * (0.8 + 0.8 * uLevel);
   }
-  float aura = exp(-max(r - R, 0.0) * (4.5 - 2.5 * uGlow)) * smoothstep(R * 0.7, R, r);
-  float rip = 0.75 + 0.25 * sin(r * 28.0 - t * 2.0);
-  acc += uColorB * aura * rip * (0.18 + 0.25 * uGlow + 0.5 * uLevel);
-  acc += uColorB * 0.06 * smoothstep(R, 0.0, r);
+  float aura = exp(-max(r - R, 0.0) * (3.8 - 2.0 * uGlow)) * smoothstep(R * 0.8, R * 1.05, r);
+  acc += uColorB * aura * (0.16 + 0.22 * uGlow + 0.45 * uLevel);
+  acc += uColorB * 0.05 * smoothstep(R, 0.0, r);
   vec4 col = glow(acc);
   col = addLight(col, uColorC * thinkArc(p, R) * 1.4);
   col = addLight(col, uColorC * transRing(r, R));

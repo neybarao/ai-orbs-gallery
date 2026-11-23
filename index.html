@@ -17,29 +17,33 @@
       <span class="muted" id="count"></span>
     </div>
     <div class="audio-bar">
-      <div class="seg" id="sourceSeg" role="radiogroup" aria-label="Audio source">
-        <button data-src="sim" class="on" role="radio" aria-checked="true">Simulated</button>
-        <button data-src="mic" role="radio" aria-checked="false">Mic</button>
-        <button data-src="system" role="radio" aria-checked="false">System</button>
-        <button data-src="file" role="radio" aria-checked="false">File</button>
+      <div class="seg small" id="langSeg" aria-label="Language">
+        <button data-lang="en">EN</button>
+        <button data-lang="pt">PT</button>
       </div>
-      <div class="meter" title="Input level"><i id="meterFill"></i></div>
+      <div class="seg" id="sourceSeg" role="radiogroup" data-i18n-aria="audioSource" aria-label="Audio source">
+        <button data-src="sim" class="on" role="radio" aria-checked="true" data-i18n="srcSim">Simulated</button>
+        <button data-src="mic" role="radio" aria-checked="false" data-i18n="srcMic">Mic</button>
+        <button data-src="system" role="radio" aria-checked="false" data-i18n="srcSystem">System</button>
+        <button data-src="file" role="radio" aria-checked="false" data-i18n="srcFile">File</button>
+      </div>
+      <div class="meter" data-i18n-title="inputLevel" title="Input level"><i id="meterFill"></i></div>
       <input type="file" id="fileInput" accept="audio/*" hidden />
     </div>
   </header>
 
   <main>
-    <p class="lede">Audio-reactive orbs for voice &amp; AI interfaces. One WebGL2 draw call each. Hover to preview <em>speaking</em>, click to configure and export.</p>
+    <p class="lede" data-i18n-html="lede">Audio-reactive orbs for voice &amp; AI interfaces. One WebGL2 draw call each. Hover to preview <em>speaking</em>, click to configure and export.</p>
     <div class="grid" id="grid"></div>
   </main>
 
   <section class="detail" id="detail" hidden aria-modal="true" role="dialog" aria-labelledby="dTitle">
     <div class="stage" id="stage">
-      <button class="icon-btn close" id="closeBtn" aria-label="Close">&#x2715;</button>
+      <button class="icon-btn close" id="closeBtn" data-i18n-aria="close" aria-label="Close">&#x2715;</button>
       <div class="stage-bg">
-        <button data-bg="dark" class="on" title="Dark background"></button>
-        <button data-bg="light" title="Light background"></button>
-        <button data-bg="checker" title="Transparency checker"></button>
+        <button data-bg="dark" class="on" data-i18n-title="bgDark" title="Dark background"></button>
+        <button data-bg="light" data-i18n-title="bgLight" title="Light background"></button>
+        <button data-bg="checker" data-i18n-title="bgChecker" title="Transparency checker"></button>
       </div>
       <canvas id="stageCanvas"></canvas>
       <div class="states" id="states" role="tablist"></div>
@@ -52,17 +56,17 @@
       </div>
 
       <div class="block">
-        <div class="block-title">Look <button class="link" id="resetBtn">Reset</button></div>
+        <div class="block-title"><span data-i18n="look">Look</span> <button class="link" id="resetBtn" data-i18n="reset">Reset</button></div>
         <div class="palettes" id="palettes"></div>
         <div class="colors" id="colors"></div>
         <div id="sliders"></div>
       </div>
 
       <div class="block">
-        <div class="block-title">Export</div>
+        <div class="block-title" data-i18n="export">Export</div>
         <div class="tabs" role="tablist">
-          <button class="on" data-tab="code">Code</button>
-          <button data-tab="video">Video</button>
+          <button class="on" data-tab="code" data-i18n="code">Code</button>
+          <button data-tab="video" data-i18n="video">Video</button>
         </div>
 
         <div class="tab-body" data-body="code">
@@ -73,24 +77,24 @@
           </div>
           <pre class="code" id="codeOut"></pre>
           <div class="row">
-            <button class="btn" id="copyCode">Copy snippet</button>
-            <button class="btn primary" id="dlComponent">Download .js</button>
+            <button class="btn" id="copyCode" data-i18n="copySnippet">Copy snippet</button>
+            <button class="btn primary" id="dlComponent" data-i18n="downloadJs">Download .js</button>
           </div>
           <div class="row">
             <button class="btn ghost" id="dlDemo">Demo .html</button>
-            <button class="btn ghost" id="copyConfig">Copy config JSON</button>
+            <button class="btn ghost" id="copyConfig" data-i18n="copyConfig">Copy config JSON</button>
           </div>
         </div>
 
         <div class="tab-body" data-body="video" hidden>
-          <label class="field">State
+          <label class="field"><span data-i18n="state">State</span>
             <select id="vState"></select>
           </label>
           <div class="field-row">
-            <label class="field">Duration
+            <label class="field"><span data-i18n="duration">Duration</span>
               <select id="vDur"><option>3</option><option selected>5</option><option>8</option><option>10</option><option>15</option></select>
             </label>
-            <label class="field">Size
+            <label class="field"><span data-i18n="size">Size</span>
               <select id="vSize"><option value="512">512</option><option value="720">720</option><option value="1080" selected>1080</option></select>
             </label>
             <label class="field">FPS
@@ -98,18 +102,18 @@
             </label>
           </div>
           <div class="field-row">
-            <label class="field">Format
+            <label class="field"><span data-i18n="format">Format</span>
               <select id="vFormat"></select>
             </label>
-            <label class="field">Background
+            <label class="field"><span data-i18n="background">Background</span>
               <input type="color" id="vBg" value="#000000" />
             </label>
           </div>
-          <label class="check"><input type="checkbox" id="vAlpha" /> Transparent background <span class="muted">(WebM, experimental)</span></label>
-          <label class="check"><input type="checkbox" id="vLive" /> Drive with the live audio source</label>
-          <button class="btn primary wide" id="recordBtn">Record video</button>
+          <label class="check"><input type="checkbox" id="vAlpha" /> <span data-i18n="transparent">Transparent background</span> <span class="muted" data-i18n="experimental">(WebM, experimental)</span></label>
+          <label class="check"><input type="checkbox" id="vLive" /> <span data-i18n="driveLive">Drive with the live audio source</span></label>
+          <button class="btn primary wide" id="recordBtn" data-i18n="record">Record video</button>
           <div class="progress" id="vProgress" hidden><i></i></div>
-          <p class="muted tiny">Recorded in real time in your browser. Keep this tab visible while recording.</p>
+          <p class="muted tiny" data-i18n="recordNote">Recorded in real time in your browser. Keep this tab visible while recording.</p>
         </div>
       </div>
     </aside>
