@@ -1,43 +1,73 @@
-// Ref: steady double-line ring over a dim sphere; many faint wispy filaments hug the ring
-// and flicker, occasionally a thin crack crosses the interior.
+// Arc Ring → plasma globe: a glowing electrode in a glass sphere; plasma tendrils snake from
+// the core to the glass, branch, drift continuously and flare where they touch the glass.
 export default {
   id: 'electric',
-  name: 'Arc Ring',
-  description: 'Steady double ring wrapped in faint flickering filaments.',
-  tags: ['ring', 'electric'],
-  defaults: { colorA: '#4aa8ff', colorB: '#a77bff', colorC: '#dff3ff', glow: 0.6, detail: 0.5 },
-  labels: { detail: 'Jaggedness' },
+  name: 'Plasma',
+  description: 'Plasma globe: tendrils snake from the core to the glass and flare on contact.',
+  tags: ['electric', 'plasma'],
+  defaults: { colorA: '#c86bff', colorB: '#3a1d8f', colorC: '#e9f0ff', glow: 0.6, detail: 0.5 },
+  labels: { detail: 'Tendrils' },
   frag: /* glsl */ `
+float wrapA(float a){ return a - 6.2831853 * floor((a + PI) / 6.2831853); }
+// angular wander of a tendril along the radius (continuous in time, no stepping)
+float wander(float r, float seed, float t){
+  return (noise3(vec3(r * 3.0, seed, t * 0.9)) - 0.5) * 1.6 * r
+       + (noise3(vec3(r * 9.0, seed + 5.0, t * 3.5)) - 0.5) * 0.35 * r
+       + (noise3(vec3(r * 26.0, seed + 9.0, t * 9.0)) - 0.5) * 0.08;
+}
 vec4 orb(vec2 p){
   float t = uTime;
   float r = length(p);
-  float ang = atan(p.y, p.x); vec2 cs = vec2(cos(ang), sin(ang));
-  float R = 0.55 + 0.015 * uBass;
+  float ang = atan(p.y, p.x);
+  float R = 0.58;                       // glass radius
+  float Rcore = 0.075 + 0.01 * uBass;
   vec3 acc = vec3(0.0);
-  // double ring
-  acc += uColorC * (exp(-abs(r - R) * 220.0) + exp(-abs(r - R + 0.014) * 260.0) * 0.8);
-  acc += uColorA * exp(-abs(r - R + 0.007) * 30.0) * 0.45;
-  // filaments
-  for (int i = 0; i < 9; i++) {
+  float inside = smoothstep(R + PX, R - PX, r);
+  int count = int(mix(5.0, 11.0, uDetail));
+  for (int i = 0; i < 11; i++) {
+    if (i >= count) break;
     float fi = float(i);
-    float st = floor(t * (2.5 + 0.4 * fi) + fi * 0.37);
-    float side = (mod(fi, 2.0) < 1.0 ? 1.0 : -1.0) * (0.012 + 0.006 * fi);
-    float rr = R + side + (fbm3(vec3(cs * (2.5 + 2.5 * uDetail), fi * 7.0 + st * 0.53)) - 0.5) * 2.0 * (0.05 + 0.1 * uLevel + 0.03 * uThink);
-    float seg = smoothstep(0.35, 0.65, noise3(vec3(cs * 1.3, fi * 4.0 + st * 0.31)));
-    vec3 c = mod(fi, 3.0) < 1.0 ? uColorB : uColorA;
-    acc += mix(c, uColorC, 0.35) * (exp(-abs(r - rr) * 300.0) + exp(-abs(r - rr) * 60.0) * 0.08) * seg * (0.75 + 0.8 * uLevel);
+    float seed = fi * 7.31;
+    // end point angle drifts slowly around the globe
+    float a0 = fi * 2.399 + (noise3(vec3(seed, 0.0, t * 0.18)) - 0.5) * 7.0;
+    float rr = clamp(r, Rcore, R);
+    float A = a0 + wander(rr, seed, t);
+    float da = abs(wrapA(ang - A)) * rr;
+    float prog = smoothstep(Rcore, R, r);
+    float energy = 0.55 + 0.45 * noise3(vec3(seed, 3.0, t * 1.7)) + 0.9 * uLevel;
+    float w = mix(0.010, 0.0035, prog) * (0.8 + 0.6 * uLevel);
+    float core = exp(-da / w);
+    float sheath = exp(-da / (w * 6.0)) * 0.22;
+    float fade = smoothstep(R + 0.005, R - 0.01, r);
+    acc += (uColorC * core + uColorA * (core * 0.6 + sheath)) * energy * fade;
+    // a branch splitting off part way
+    float r0 = mix(0.22, 0.4, hash11(seed));
+    if (r > r0) {
+      float dir = hash11(seed + 1.0) > 0.5 ? 1.0 : -1.0;
+      float Ab = a0 + wander(r0, seed, t) + dir * (r - r0) * (1.4 + 0.8 * noise3(vec3(seed, 7.0, t * 0.5)))
+               + wander(rr, seed + 3.3, t) * 0.6;
+      float db = abs(wrapA(ang - Ab)) * rr;
+      float wb = w * 0.6;
+      acc += (uColorC * exp(-db / wb) * 0.7 + uColorA * exp(-db / (wb * 6.0)) * 0.15) * energy * fade * 0.8;
+    }
+    // flare where the tendril touches the glass
+    vec2 hitP = R * vec2(cos(a0 + wander(R, seed, t)), sin(a0 + wander(R, seed, t)));
+    float fl = exp(-length(p - hitP) * 38.0);
+    acc += (uColorC * 0.6 + uColorA) * fl * energy * 0.55;
   }
-  // interior crack
-  float kk = floor(t * 1.6);
-  float showC = clamp(step(0.62, hash11(kk * 1.7)) + uLevel * 0.6, 0.0, 1.0);
-  float cx = (hash11(kk) - 0.5) * 0.6 + (fbm3(vec3(p.y * 5.0, kk, 1.0)) - 0.5) * 0.2;
-  acc += uColorC * exp(-abs(p.x - cx) * 420.0) * smoothstep(R, R * 0.4, abs(p.y)) * step(r, R) * showC * 0.45;
-  // dim sphere body, lighter towards the top
-  float body = smoothstep(R, R - 0.01, r);
-  acc += mix(uColorA, uColorB, 0.3) * body * (0.05 + 0.06 * smoothstep(-R, R, p.y) + 0.08 * uLevel);
-  vec4 col = glow(acc);
-  col = addLight(col, uColorA * halo(r, R) * smoothstep(R * 0.92, R * 1.05, r) * (0.2 + 0.4 * uGlow + 0.5 * uLevel));
-  col = addLight(col, uColorC * thinkArc(p, R) * 1.3);
+  // electrode
+  float cr = r / Rcore;
+  acc += uColorC * smoothstep(1.0, 0.6, cr) * 1.2;
+  acc += uColorA * exp(-max(r - Rcore, 0.0) * 14.0) * (0.45 + 0.4 * uLevel);
+  // gas haze and glass
+  acc += uColorB * inside * (0.06 + 0.05 * (1.0 - r / R));
+  float rim = exp(-abs(r - R) * 140.0);
+  float spec = exp(-abs(length(p - vec2(0.05, -0.05)) - 0.5) * 90.0) * smoothstep(0.2, 0.9, dot(normalize(p + 1e-5), normalize(vec2(-0.6, 0.8)))) * 0.25;
+  acc += uColorC * (rim * 0.22 + spec * inside);
+  vec4 col = vec4(acc * inside, inside * 0.35);
+  col = addLight(col, acc * (1.0 - inside));
+  col = addLight(col, uColorA * halo(r, R) * smoothstep(R * 0.95, R * 1.05, r) * (0.1 + 0.3 * uGlow + 0.4 * uLevel));
+  col = addLight(col, uColorC * thinkArc(p, R + 0.02));
   col = addLight(col, uColorC * transRing(r, R));
   return col;
 }`,

@@ -1,46 +1,77 @@
-// Ref: fixed ring with a crisp white inner edge; wide translucent ribbons tilted in 3D
-// precess around it like a spinning coin; huge faint aura.
+// Violet Ring: true 3D rings like a gyroscope. Each ring is a circle in space with its own
+// spinning axis, seen in perspective; arcs behind the core dim and thin, arcs in front glow.
 export default {
   id: 'violet',
   name: 'Violet Ring',
-  description: 'Crisp ring orbited by translucent ribbons precessing in 3D.',
-  tags: ['ring', 'glow'],
+  description: 'Gyroscope of luminous rings tumbling in 3D around a dark core.',
+  tags: ['ring', 'glow', '3d'],
   defaults: { colorA: '#9b5cff', colorB: '#5a1fd1', colorC: '#f4ecff', glow: 0.7, detail: 0.5 },
-  labels: { detail: 'Ribbon tilt' },
+  labels: { detail: 'Ring tilt' },
   frag: /* glsl */ `
+mat3 violetEuler(float a, float b, float c){
+  float ca = cos(a), sa = sin(a), cb = cos(b), sb = sin(b), cc = cos(c), sc = sin(c);
+  mat3 ry = mat3(ca, 0.0, -sa, 0.0, 1.0, 0.0, sa, 0.0, ca);
+  mat3 rx = mat3(1.0, 0.0, 0.0, 0.0, cb, sb, 0.0, -sb, cb);
+  mat3 rz = mat3(cc, sc, 0.0, -sc, cc, 0.0, 0.0, 0.0, 1.0);
+  return rz * ry * rx;
+}
+vec3 violetPt(mat3 m, float R, float th){
+  vec3 q = m * vec3(R * cos(th), R * sin(th), 0.0);
+  return vec3(q.xy * 2.4 / (2.4 - q.z), q.z);
+}
+// glow of a 3D circle drawn as projected segments; max over segments keeps both
+// the front and back arcs and their per-segment depth (no discontinuities)
+float violetTube(vec2 p, mat3 m, float R, float w, float wGlow, float glowK, float Rc){
+  float best = 0.0;
+  vec3 a = violetPt(m, R, 0.0);
+  for (int i = 1; i <= 40; i++) {
+    vec3 b = violetPt(m, R, float(i) * 0.15707963);
+    vec2 ab = b.xy - a.xy;
+    float h = clamp(dot(p - a.xy, ab) / max(dot(ab, ab), 1e-6), 0.0, 1.0);
+    float d = length(p - a.xy - ab * h);
+    float z = mix(a.z, b.z, h);
+    float persp = 2.4 / (2.4 - z);
+    float front = smoothstep(-R, R, z);
+    float occl = z < 0.0 ? mix(1.0, 0.1, smoothstep(Rc + 0.01, Rc - 0.01, length(p))) : 1.0;
+    float v = (exp(-d / (w * persp)) + glowK * exp(-d / (wGlow * persp))) * (0.3 + 0.7 * front) * occl;
+    best = max(best, v);
+    a = b;
+  }
+  return best;
+}
 vec4 orb(vec2 p){
   float t = uTime;
   float r = length(p);
-  float R = 0.42 + 0.025 * uBass;
+  float Rc = 0.3 + 0.02 * uBass;           // dark core radius
   vec3 acc = vec3(0.0);
-  // main ring: white inner edge fading to violet outwards
-  float din = r - R;
-  acc += uColorC * exp(-abs(din) * 160.0) * 1.3;
-  acc += uColorA * smoothstep(-0.01, 0.0, din) * exp(-max(din, 0.0) * 22.0) * 0.75;
-  acc += uColorA * exp(-abs(din) * 12.0) * 0.18;
-  // precessing ribbons (tilted ellipses)
-  for (int i = 0; i < 2; i++) {
+  float tiltK = 0.7 + 0.6 * uDetail + 0.3 * uLevel;
+  for (int i = 0; i < 4; i++) {
     float fi = float(i);
-    float phi = t * (1.6 + 0.5 * fi) + fi * 2.4;
-    float tilt = (0.5 + 0.4 * uDetail) + 0.12 * sin(t * 0.9 + fi) + 0.25 * uLevel + 0.15 * uThink;
-    vec2 q = rot(phi) * p;
-    vec2 c = vec2(0.0, 0.06 + 0.035 * fi + 0.04 * uLevel);
-    q -= c;
-    q.y /= max(cos(tilt), 0.25);
-    float Ri = R + 0.04 + 0.02 * fi + 0.05 * uLevel;
-    float d = length(q) - Ri;
-    float w = 0.05 + 0.03 * uLevel;
-    float band = smoothstep(w, 0.0, abs(d)) ;
-    float edge = exp(-abs(abs(d) - w * 0.8) * 90.0);
-    float front = 0.45 + 0.55 * smoothstep(-0.3, 0.6, q.y / Ri);
-    acc += mix(uColorA, uColorC, 0.25) * (band * 0.5 + edge * 0.55) * front * (0.8 + 0.8 * uLevel);
+    if (i == 0) {
+      float R = 0.42 + 0.025 * uBass;
+      mat3 m = violetEuler(0.3 * sin(t * 0.5), 0.25 * sin(t * 0.37) + 0.15, 0.0);
+      float w = 0.0045 + 0.006 * uLevel;
+      acc += uColorC * violetTube(p, m, R, w, 0.05, 0.0, Rc) * 1.25;
+      acc += uColorA * violetTube(p, m, R, 0.035, 0.035, 0.0, Rc) * 0.5;
+    } else {
+      float R = 0.45 + 0.035 * fi + 0.05 * uLevel * hash11(fi + 2.0);
+      float roll = fi == 1.0 ? 0.5 : (fi == 2.0 ? -1.0 : 2.2);
+      float tilt = (0.35 + 0.25 * fi) * tiltK;
+      mat3 m = violetEuler(t * (0.55 + 0.2 * fi) + fi * 2.1, tilt + 0.2 * sin(t * 0.6 + fi), roll + 0.3 * sin(t * 0.21 + fi));
+      vec3 c = mix(uColorA, uColorC, 0.15 + 0.15 * fi);
+      float w = 0.012 + 0.012 * uLevel;
+      acc += c * violetTube(p, m, R, w, 0.045, 0.25, Rc) * (0.55 + 0.6 * uLevel);
+    }
   }
-  float aura = exp(-max(r - R, 0.0) * (3.8 - 2.0 * uGlow)) * smoothstep(R * 0.8, R * 1.05, r);
-  acc += uColorB * aura * (0.16 + 0.22 * uGlow + 0.45 * uLevel);
-  acc += uColorB * 0.05 * smoothstep(R, 0.0, r);
-  vec4 col = glow(acc);
-  col = addLight(col, uColorC * thinkArc(p, R) * 1.4);
-  col = addLight(col, uColorC * transRing(r, R));
+  // dark core with a faint violet limb
+  float core = smoothstep(Rc + PX, Rc - PX, r);
+  acc += uColorB * exp(-abs(r - Rc) * 40.0) * 0.25;
+  float aura = exp(-max(r - 0.42, 0.0) * (3.8 - 2.0 * uGlow)) * smoothstep(0.3, 0.45, r);
+  acc += uColorB * aura * (0.12 + 0.2 * uGlow + 0.4 * uLevel);
+  vec4 col = vec4(uColorB * 0.03 * core, core * 0.55);
+  col = addLight(col, acc);
+  col = addLight(col, uColorC * thinkArc(p, 0.42) * 1.3);
+  col = addLight(col, uColorC * transRing(r, 0.42));
   return col;
 }`,
 };
