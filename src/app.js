@@ -1,5 +1,6 @@
 import { Runtime } from './runtime.js';
 import { ORBS } from './orbs/index.js';
+import { t, setLang, applyStatic, orbText } from './i18n.js';
 import { buildComponentFile, buildDemoHtml, cleanConfig, download, fileName, recordVideo, snippets, videoFormats } from './export.js';
 
 const $ = (s, el = document) => el.querySelector(s);
@@ -22,13 +23,27 @@ const SLIDERS = [
   { key: 'detail', label: 'Detail', min: 0, max: 1, step: 0.01 },
   { key: 'scale', label: 'Size', min: 0.4, max: 1.4, step: 0.01 },
 ];
-const STATE_LABELS = { intro: 'Intro', idle: 'Idle', speaking: 'Speaking', transition: 'Transition', thinking: 'Thinking', auto: 'Auto' };
+
 
 // ---------------------------------------------------------------- persistence
 const STORE = 'ai-orbs:configs:v1';
 const loadSaved = () => { try { return JSON.parse(localStorage.getItem(STORE) || '{}'); } catch { return {}; } };
 let saved = loadSaved();
 const persist = () => { try { localStorage.setItem(STORE, JSON.stringify(saved)); } catch { /* storage unavailable */ } };
+
+// ---------------------------------------------------------------- language
+applyStatic();
+$$('#langSeg button').forEach((b) => b.addEventListener('click', () => {
+  setLang(b.dataset.lang);
+  buildStates();
+  if (current) {
+    $('#dDesc').textContent = orbText(current.card.def).description;
+    buildControls();
+    refreshFormats();
+    $$('#states button').forEach((x) => x.classList.toggle('on', x.dataset.state === current.inst.state));
+  }
+  cards.forEach((c) => c.el.setAttribute('aria-label', `${t('open')} ${c.def.name}`));
+}));
 
 // ---------------------------------------------------------------- toast
 let toastT;
@@ -58,13 +73,13 @@ async function chooseSource(src) {
     else if (src === 'file') { $('#fileInput').click(); return; }
     setSourceUI(src);
   } catch (e) {
-    toast(e.name === 'NotAllowedError' ? 'Permission denied.' : e.message || 'Could not start audio.');
+    toast(e.name === 'NotAllowedError' ? t('permissionDenied') : e.message || t('audioFailed'));
   }
 }
 $$('#sourceSeg button').forEach((b) => b.addEventListener('click', () => chooseSource(b.dataset.src)));
 $('#fileInput').addEventListener('change', async (e) => {
   const f = e.target.files[0]; if (!f) return;
-  try { await audio.useFile(f); setSourceUI('file'); toast('Playing ' + f.name); } catch (err) { toast(err.message); }
+  try { await audio.useFile(f); setSourceUI('file'); toast(t('playing') + ' ' + f.name); } catch (err) { toast(err.message); }
   e.target.value = '';
 });
 
@@ -73,12 +88,12 @@ const grid = $('#grid');
 $('#count').textContent = String(ORBS.length).padStart(2, '0');
 let shared;
 try { shared = new Runtime.OrbRenderer(document.createElement('canvas'), { powerPreference: 'low-power' }); }
-catch (e) { grid.innerHTML = '<p class="muted">WebGL2 is not available in this browser.</p>'; throw e; }
+catch (e) { grid.innerHTML = '<p class="muted">' + t('noWebgl') + '</p>'; throw e; }
 
 const cards = ORBS.map((def, i) => {
   const el = document.createElement('button');
   el.className = 'card';
-  el.setAttribute('aria-label', `Open ${def.name}`);
+  el.setAttribute('aria-label', `${t('open')} ${def.name}`);
   el.innerHTML = `<canvas></canvas><div class="meta"><span class="name">${def.name}</span><span class="idx">${String(i + 1).padStart(2, '0')}</span></div>`;
   grid.appendChild(el);
   const canvas = $('canvas', el);
@@ -116,12 +131,12 @@ function buildStates() {
   box.innerHTML = '';
   for (const s of Runtime.STATES) {
     const b = document.createElement('button');
-    b.textContent = STATE_LABELS[s]; b.dataset.state = s; b.setAttribute('role', 'tab');
+    b.textContent = t('states')[s]; b.dataset.state = s; b.setAttribute('role', 'tab');
     b.addEventListener('click', () => setDetailState(s));
     box.appendChild(b);
   }
   const vs = $('#vState');
-  vs.innerHTML = Runtime.STATES.filter((s) => s !== 'auto').map((s) => `<option value="${s}">${STATE_LABELS[s]}</option>`).join('');
+  vs.innerHTML = Runtime.STATES.filter((s) => s !== 'auto').map((s) => `<option value="${s}">${t('states')[s]}</option>`).join('');
 }
 buildStates();
 
@@ -138,7 +153,7 @@ function openDetail(card) {
   detail.hidden = false;
   document.body.style.overflow = 'hidden';
   $('#dTitle').textContent = card.def.name;
-  $('#dDesc').textContent = card.def.description;
+  $('#dDesc').textContent = orbText(card.def).description;
   setDetailState('intro');
   setTimeout(() => { if (current && current.inst.state === 'intro') setDetailState('idle'); }, (current.inst.config.introDuration || 1.8) * 1000 + 200);
   buildControls();
@@ -177,7 +192,7 @@ function buildControls() {
   const defaults = [def.defaults.colorA, def.defaults.colorB, def.defaults.colorC];
   [defaults, ...PALETTES].forEach((p, i) => {
     const b = document.createElement('button');
-    b.title = i === 0 ? 'Original' : 'Palette ' + i;
+    b.title = i === 0 ? t('original') : t('palette') + ' ' + i;
     b.style.background = `conic-gradient(${p[0]} 0 50%, ${p[2]} 50% 75%, ${p[1]} 75%)`;
     b.addEventListener('click', () => { applyConfig({ colorA: p[0], colorB: p[1], colorC: p[2] }); syncControls(); });
     pal.appendChild(b);
@@ -185,7 +200,8 @@ function buildControls() {
 
   const colors = $('#colors');
   colors.innerHTML = '';
-  [['colorA', 'Main'], ['colorB', 'Depth'], ['colorC', 'Light']].forEach(([key, label]) => {
+  ['colorA', 'colorB', 'colorC'].forEach((key) => {
+    const label = t('colors')[key];
     const l = document.createElement('label');
     l.innerHTML = `<input type="color" data-key="${key}" value="${cfg[key]}"> ${label}`;
     $('input', l).addEventListener('input', (e) => applyConfig({ [key]: e.target.value }));
@@ -197,7 +213,7 @@ function buildControls() {
   for (const s of SLIDERS) {
     const row = document.createElement('label');
     row.className = 'slider';
-    const label = s.key === 'detail' && def.labels && def.labels.detail ? def.labels.detail : s.label;
+    const label = s.key === 'detail' ? orbText(def).detail : t('sliders')[s.key];
     row.innerHTML = `<span>${label}</span><input type="range" data-key="${s.key}" min="${s.min}" max="${s.max}" step="${s.step}" value="${cfg[s.key]}"><span>${(+cfg[s.key]).toFixed(2)}</span>`;
     const input = $('input', row), out = row.lastElementChild;
     input.addEventListener('input', () => { out.textContent = (+input.value).toFixed(2); applyConfig({ [s.key]: +input.value }); });
@@ -236,10 +252,10 @@ $$('.tabs button').forEach((b) => b.addEventListener('click', () => {
 }));
 async function copy(text, msg) {
   try { await navigator.clipboard.writeText(text); toast(msg); }
-  catch { toast('Clipboard blocked — select the text manually.'); }
+  catch { toast(t('clipboardBlocked')); }
 }
-$('#copyCode').addEventListener('click', () => copy($('#codeOut').textContent, 'Snippet copied'));
-$('#copyConfig').addEventListener('click', () => copy(JSON.stringify(cleanConfig(current.inst.config), null, 2), 'Config copied'));
+$('#copyCode').addEventListener('click', () => copy($('#codeOut').textContent, t('snippetCopied')));
+$('#copyConfig').addEventListener('click', () => copy(JSON.stringify(cleanConfig(current.inst.config), null, 2), t('configCopied')));
 $('#dlComponent').addEventListener('click', () => download(fileName(current.card.def), buildComponentFile(current.card.def, current.inst.config), 'text/javascript'));
 $('#dlDemo').addEventListener('click', () => download(`ai-orb-${current.card.def.id}-demo.html`, buildDemoHtml(current.card.def, current.inst.config), 'text/html'));
 
@@ -247,7 +263,7 @@ $('#dlDemo').addEventListener('click', () => download(`ai-orb-${current.card.def
 function refreshFormats() {
   const list = videoFormats($('#vAlpha').checked);
   const sel = $('#vFormat');
-  sel.innerHTML = list.map((f) => `<option value="${f.id}">${f.label}</option>`).join('') || '<option value="">Unsupported</option>';
+  sel.innerHTML = list.map((f) => `<option value="${f.id}">${f.label}</option>`).join('') || '<option value="">' + t('unsupported') + '</option>';
   $('#recordBtn').disabled = !list.length;
   $('#vBg').disabled = $('#vAlpha').checked;
 }
@@ -256,7 +272,7 @@ $('#recordBtn').addEventListener('click', async () => {
   if (!current) return;
   const btn = $('#recordBtn'), prog = $('#vProgress');
   const def = current.card.def;
-  btn.disabled = true; btn.textContent = 'Recording…';
+  btn.disabled = true; btn.textContent = t('recording');
   prog.hidden = false; $('i', prog).style.width = '0%';
   try {
     const { blob, ext } = await recordVideo({
@@ -273,11 +289,11 @@ $('#recordBtn').addEventListener('click', async () => {
       onProgress: (p) => { $('i', prog).style.width = (p * 100).toFixed(1) + '%'; },
     });
     download(`ai-orb-${def.id}-${$('#vState').value}.${ext}`, blob);
-    toast('Video ready');
+    toast(t('videoReady'));
   } catch (e) {
-    toast(e.message || 'Recording failed');
+    toast(e.message || t('recordFailed'));
   } finally {
-    btn.disabled = false; btn.textContent = 'Record video';
+    btn.disabled = false; btn.textContent = t('record');
     setTimeout(() => { prog.hidden = true; }, 800);
   }
 });
