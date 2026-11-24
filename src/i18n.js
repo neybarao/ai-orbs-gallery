@@ -50,6 +50,7 @@ export const STRINGS = {
       wire: { description: 'Membrana espelhada com dobras horizontais em movimento.', detail: 'Densidade das dobras' },
       globe: { description: 'Esfera de vidro com luz líquida correndo pela borda sobre meridianos suaves.', detail: 'Meridianos' },
       electric: { description: 'Globo de plasma: raios que serpenteiam do núcleo até o vidro e brilham no contato.', detail: 'Raios' },
+      pip: { description: 'Um bichinho numa bolha de vidro: pisca, olha em volta e sorri quando fala.', detail: 'Expressividade' },
       eclipse: { description: 'Crescente de linhas finas dentro de uma esfera de vidro, com o miolo oscilando como um pião.', detail: 'Número de linhas' },
     },
   },

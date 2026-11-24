@@ -9,5 +9,6 @@ import wire from './wire.js';
 import globe from './globe.js';
 import electric from './electric.js';
 import eclipse from './eclipse.js';
+import pip from './pip.js';
 
-export const ORBS = [abyss, solar, violet, pastel, particles, spike, wire, globe, electric, eclipse];
+export const ORBS = [abyss, solar, violet, pastel, particles, spike, wire, globe, electric, eclipse, pip];
