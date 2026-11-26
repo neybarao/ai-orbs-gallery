@@ -69,7 +69,6 @@ export const STRINGS = {
       lobes: { description: 'Lóbulos granulados em forma de folha numa esfera que gira, cruzando frente e fundo.', detail: 'Número de lóbulos' },
       drift: { description: 'Tigela de partículas vista de cima, com a poeira escorregando devagar.', detail: 'Densidade de partículas' },
       dots: { description: 'Esfera oca de pontos de vários tamanhos que gira e dá giros rápidos.', detail: 'Quantidade de pontos' },
-      hive: { description: 'Esfera de vidro com uma faixa de hexágonos em relevo que varre de polo a polo.', detail: 'Quantidade de hexágonos' },
       lattice: { description: 'Borda cromática em volta de fios neon que fluem, somem até restar só o anel e voltam a crescer.', detail: 'Quantidade de linhas' },
       aqua: { description: 'Esfera de vidro azul com fitas de fumaça se dobrando por dentro.', detail: 'Quantidade de fitas' },
     },
