@@ -21,6 +21,15 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: actions/configure-pages@v5
+      # Cache busting: every deploy gets new URLs for the JS modules and CSS, so
+      # browsers (including iOS home-screen apps) never keep serving old orbs.
+      # Only touches top-level import lines and index.html, never exported code.
+      - name: Stamp asset versions
+        run: |
+          V="${GITHUB_SHA::8}"
+          find src -name '*.js' -print0 | xargs -0 sed -E -i "/^import /s#(['\"])(\.{1,2}/[^'\"]+\.js)\1#\1\2?v=$V\1#g"
+          sed -E -i "s#src=\"src/app\.js\"#src=\"src/app.js?v=$V\"#; s#href=\"styles\.css\"#href=\"styles.css?v=$V\"#" index.html
+          grep -c "?v=$V" index.html src/app.js src/orbs/index.js
       - uses: actions/upload-pages-artifact@v5
         with:
           path: .
