@@ -27,10 +27,9 @@ import vortex from './vortex.js';
 import lobes from './lobes.js';
 import drift from './drift.js';
 import dots from './dots.js';
-import hive from './hive.js';
 import lattice from './lattice.js';
 import aqua from './aqua.js';
 
 export const ORBS = [abyss, solar, violet, pastel, particles, spike, wire, globe, electric, eclipse, pip,
   halo, iris, voxel, ink, cluster, coral, nova, fiber, rose, marble,
-  frost, silk, scribble, vortex, lobes, drift, dots, hive, lattice, aqua];
+  frost, silk, scribble, vortex, lobes, drift, dots, lattice, aqua];
