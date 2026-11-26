@@ -66,7 +66,6 @@ export const STRINGS = {
       silk: { description: 'Anel prateado de fios finos com ondas que se levantam e correm em volta.', detail: 'Número de fios' },
       scribble: { description: 'Pilha de traços tremidos feitos à mão em volta de um buraco escuro, sempre se redesenhando.', detail: 'Número de traços' },
       vortex: { description: 'Redemoinho de fios ondulados em espiral até um ponto brilhante.', detail: 'Número de fios' },
-      lobes: { description: 'Lóbulos granulados em forma de folha numa esfera que gira, cruzando frente e fundo.', detail: 'Número de lóbulos' },
       drift: { description: 'Tigela de partículas vista de cima, com a poeira escorregando devagar.', detail: 'Densidade de partículas' },
       dots: { description: 'Esfera oca de pontos de vários tamanhos que gira e dá giros rápidos.', detail: 'Quantidade de pontos' },
       lattice: { description: 'Borda cromática em volta de fios neon que fluem, somem até restar só o anel e voltam a crescer.', detail: 'Quantidade de linhas' },
